@@ -7,14 +7,19 @@ import { useTimestampTimer } from "../hooks/useTimestampTimer";
 import { formatDuration } from "../utils/formatDuration";
 
 type WorkingScreenProps = {
+  /** 作業開始時のタイムスタンプ (ms, Date.now() の値) */
+  startTime: number;
   /** 作業終了時に、確定した経過ミリ秒を親へ渡す */
   onEnd: (elapsedMs: number) => void;
 };
 
-export const WorkingScreen: React.FC<WorkingScreenProps> = ({ onEnd }) => {
+export const WorkingScreen: React.FC<WorkingScreenProps> = ({
+  startTime,
+  onEnd,
+}) => {
   const [isStealth, setIsStealth] = useState<boolean>(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState<boolean>(false);
-  const { elapsedMs, getElapsedMs } = useTimestampTimer();
+  const { elapsedMs, getElapsedMs } = useTimestampTimer(startTime);
   const { hours, minutes, seconds } = formatDuration(elapsedMs);
 
   const toggleStealth = () => {

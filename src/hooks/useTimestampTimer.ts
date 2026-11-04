@@ -5,14 +5,18 @@ const TICK_INTERVAL_MS = 500;
 
 /**
  * タイムスタンプ方式のタイマー。
+ *
+ * @param startTime 作業開始時のタイムスタンプ (ms, Date.now() の値)
  */
-export const useTimestampTimer = () => {
-  // 開始時刻はマウント時に一度だけ記録する (遅延初期化)
-  const [startTime] = useState<number>(() => Date.now());
-  const [elapsedMs, setElapsedMs] = useState<number>(0);
-
+export const useTimestampTimer = (startTime: number) => {
   /** 現在時刻から経過ミリ秒を算出する (終了時の確定値取得にも使う) */
-  const getElapsedMs = useCallback(() => Date.now() - startTime, [startTime]);
+  const getElapsedMs = useCallback(
+    () => Math.max(0, Date.now() - startTime),
+    [startTime],
+  );
+
+  // 初回描画時点で差分を計算しておく (遅延初期化)
+  const [elapsedMs, setElapsedMs] = useState<number>(getElapsedMs);
 
   useEffect(() => {
     const sync = () => setElapsedMs(getElapsedMs());
@@ -28,6 +32,7 @@ export const useTimestampTimer = () => {
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
+    // アンマウント時にタイマーとリスナーを解除
     return () => {
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
