@@ -3,14 +3,24 @@ import { TimerDisplay } from "./TimerDisplay";
 import { CapsuleToolbar } from "./CapsuleToolbar";
 import { EndConfirmModal } from "./EndConfirmModal";
 import { PrimaryButton } from "./ui/PrimaryButton";
+import { useTimestampTimer } from "../hooks/useTimestampTimer";
+import { formatDuration } from "../utils/formatDuration";
 
 type WorkingScreenProps = {
-  onEnd: () => void;
+  /** 作業開始時のタイムスタンプ (ms, Date.now() の値) */
+  startTime: number;
+  /** 作業終了時に、確定した経過ミリ秒を親へ渡す */
+  onEnd: (elapsedMs: number) => void;
 };
 
-export const WorkingScreen: React.FC<WorkingScreenProps> = ({ onEnd }) => {
+export const WorkingScreen: React.FC<WorkingScreenProps> = ({
+  startTime,
+  onEnd,
+}) => {
   const [isStealth, setIsStealth] = useState<boolean>(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState<boolean>(false);
+  const { elapsedMs, getElapsedMs } = useTimestampTimer(startTime);
+  const { hours, minutes, seconds } = formatDuration(elapsedMs);
 
   const toggleStealth = () => {
     setIsStealth((prev) => !prev);
@@ -57,9 +67,9 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ onEnd }) => {
 
         {/* タイマー / ダッシュ表示 */}
         <TimerDisplay
-          hours="00"
-          minutes="12"
-          seconds="02"
+          hours={hours}
+          minutes={minutes}
+          seconds={seconds}
           isStealth={isStealth}
         />
 
@@ -85,7 +95,8 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ onEnd }) => {
         isOpen={isConfirmOpen}
         onConfirm={() => {
           setIsConfirmOpen(false);
-          onEnd();
+          // 表示中の値ではなく、確定時点の時刻から正確に算出して渡す
+          onEnd(getElapsedMs());
         }}
         onCancel={() => setIsConfirmOpen(false)}
       />
