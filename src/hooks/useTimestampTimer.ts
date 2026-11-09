@@ -20,11 +20,14 @@ type StoredPauseState = PauseState & {
 
 const INITIAL_PAUSE_STATE: PauseState = { pausedAt: null, pausedTotalMs: 0 };
 
-/** 同じ startTime の作業セッションで保存された一時停止情報だけを復元する */
-const loadPauseState = (startTime: number): PauseState => {
+/**
+ * 同じ startTime の作業セッションで保存された一時停止情報だけを読み出す。
+ * 該当データが無い・壊れている場合は null
+ */
+const readPauseState = (startTime: number): PauseState | null => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_PAUSE_STATE);
-    if (!raw) return INITIAL_PAUSE_STATE;
+    if (!raw) return null;
     const saved = JSON.parse(raw) as Partial<StoredPauseState>;
     if (
       saved.startTime === startTime &&
@@ -34,9 +37,23 @@ const loadPauseState = (startTime: number): PauseState => {
       return { pausedAt: saved.pausedAt, pausedTotalMs: saved.pausedTotalMs };
     }
   } catch {
-    // 壊れたデータは無視して初期状態から始める
+    // 壊れたデータは無視する
   }
-  return INITIAL_PAUSE_STATE;
+  return null;
+};
+
+/** 保存データが無ければ初期状態から始める */
+const loadPauseState = (startTime: number): PauseState =>
+  readPauseState(startTime) ?? INITIAL_PAUSE_STATE;
+
+/** 一時停止情報を作業セッション (startTime) と紐付けて保存する */
+const savePauseState = (startTime: number, state: PauseState) => {
+  const stored: StoredPauseState = { startTime, ...state };
+  try {
+    localStorage.setItem(STORAGE_KEY_PAUSE_STATE, JSON.stringify(stored));
+  } catch {
+    // 容量超過・プライベートモード等で保存できなくても計測自体は継続する
+  }
 };
 
 /**
@@ -75,28 +92,56 @@ export const useTimestampTimer = (startTime: number) => {
 
   const elapsedMs = calcElapsedMs(now);
 
-  /** 一時停止 ⇄ 再開 をトグルする */
+  /**
+   * 一時停止 ⇄ 再開 をトグルする。
+   * 別タブで状態が更新されている可能性があるため、操作直前に localStorage の
+   * 最新値を基準に次の状態を算出し、古い state による上書き (競合) を防ぐ。
+   */
   const togglePause = useCallback(() => {
     const current = Date.now();
-    setPauseState((prev) =>
-      prev.pausedAt === null
+    // 保存データが無い (保存失敗・別タブで終了直後など) 場合は手元の state を使う
+    const latest = readPauseState(startTime) ?? pauseState;
+    const next: PauseState =
+      latest.pausedAt === null
         ? // 計測中 → 一時停止: 停止時刻を記録
-          { ...prev, pausedAt: current }
+          { ...latest, pausedAt: current }
         : // 一時停止中 → 再開: 停止していた時間を累積へ加算
           {
             pausedAt: null,
-            pausedTotalMs: prev.pausedTotalMs + (current - prev.pausedAt),
-          },
-    );
+            pausedTotalMs:
+              latest.pausedTotalMs + Math.max(0, current - latest.pausedAt),
+          };
+    // 永続化は操作時のみ同期的に行う (state 経由の effect 書き込みだと、
+    // 他タブから同期した値や古い値を書き戻してしまう恐れがあるため)
+    savePauseState(startTime, next);
+    setPauseState(next);
     // 再開直後に古い now で表示が巻き戻らないよう即座に同期
     setNow(current);
-  }, []);
-
-  // 一時停止状態を永続化 (リロード復帰時に停止時間を正しく除外するため)
-  useEffect(() => {
-    const stored: StoredPauseState = { startTime, ...pauseState };
-    localStorage.setItem(STORAGE_KEY_PAUSE_STATE, JSON.stringify(stored));
   }, [pauseState, startTime]);
+
+  // 別タブでの一時停止・再開を即時反映する
+  // (storage イベントは「他タブ」で localStorage が変更された時のみ発火する)
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== STORAGE_KEY_PAUSE_STATE) return;
+      // 削除 (= 別タブで作業終了) や別セッションのデータでは停止情報を上書きしない。
+      // 初期化すると累積停止時間が失われ、経過時間が跳ね上がるため
+      const latest = readPauseState(startTime);
+      if (!latest) return;
+
+      setPauseState((prev) =>
+        prev.pausedAt === latest.pausedAt &&
+        prev.pausedTotalMs === latest.pausedTotalMs
+          ? prev // 変化なしなら再描画しない
+          : latest,
+      );
+      setNow(Date.now());
+    };
+
+    window.addEventListener("storage", handleStorage);
+    // startTime 変更・アンマウント時にリスナーを解除し、古いセッションで同期しない
+    return () => window.removeEventListener("storage", handleStorage);
+  }, [startTime]);
 
   useEffect(() => {
     // 一時停止中は表示更新を止める (計測値自体も pausedAt で固定されている)
