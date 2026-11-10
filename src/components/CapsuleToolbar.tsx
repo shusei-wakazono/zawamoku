@@ -2,13 +2,16 @@ import React from "react";
 
 type CapsuleToolbarProps = {
   isStealth?: boolean;
-  onPause?: () => void;
+  /** 一時停止中かどうか (ボタンアイコンの切り替えに使用) */
+  isPaused?: boolean;
+  onTogglePause?: () => void;
   onToggleVisibility?: () => void;
 };
 
 export const CapsuleToolbar: React.FC<CapsuleToolbarProps> = ({
   isStealth = false,
-  onPause,
+  isPaused = false,
+  onTogglePause,
   onToggleVisibility,
 }) => {
   return (
@@ -25,9 +28,11 @@ export const CapsuleToolbar: React.FC<CapsuleToolbarProps> = ({
         marginTop: "28px",
       }}
     >
-      {/* 一時停止ボタン */}
+      {/* 一時停止 / 再開ボタン (⏸ ⇄ ▶) */}
       <button
-        onClick={onPause}
+        onClick={onTogglePause}
+        aria-label={isPaused ? "再開" : "一時停止"}
+        aria-pressed={isPaused}
         style={{
           background: "none",
           border: "none",
@@ -44,8 +49,19 @@ export const CapsuleToolbar: React.FC<CapsuleToolbarProps> = ({
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <rect x="6" y="4" width="4" height="16" rx="1" fill="#1e293b" />
-          <rect x="14" y="4" width="4" height="16" rx="1" fill="#1e293b" />
+          {isPaused ? (
+            // 再生アイコン ▶ (一時停止中 → タップで再開)
+            <path
+              d="M7 4.5v15a1 1 0 0 0 1.52.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 7 4.5z"
+              fill="#1e293b"
+            />
+          ) : (
+            // 一時停止アイコン ⏸ (計測中 → タップで一時停止)
+            <>
+              <rect x="6" y="4" width="4" height="16" rx="1" fill="#1e293b" />
+              <rect x="14" y="4" width="4" height="16" rx="1" fill="#1e293b" />
+            </>
+          )}
         </svg>
       </button>
 
