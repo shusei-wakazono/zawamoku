@@ -29,6 +29,10 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({
     useTimestampTimer(startTime);
   const { hours, minutes, seconds } = formatDuration(elapsedMs);
   const audioStatus = useSyncExternalStore(audio.subscribe, audio.getSnapshot);
+  React.useEffect(() => {
+    if (isPaused && audio.getSnapshot() !== "paused") audio.pause();
+  }, [audio, isPaused]);
+
   const audioMessages = {
     idle: "環境音を再生できます",
     loading: "環境音を読み込んでいます…",

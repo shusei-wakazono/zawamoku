@@ -133,7 +133,8 @@ export class AmbientAudio {
           this.sources.push(source);
         });
         this.loading = false;
-        if (this.wanted) this.onStateChange();
+        this.onStateChange();
+        void this.recover();
       }).catch(() => {
         if (generation !== this.generation) return;
         this.stop();

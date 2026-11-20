@@ -104,6 +104,20 @@ describe('environmental audio lifecycle', () => {
     expect(context().resume).toHaveBeenCalledTimes(2);
     expect(audio.getSnapshot()).toBe('playing');
   });
+  it('recovers after loading if an interruption ended while sounds were loading', async () => {
+    const request = deferred<ReturnType<typeof response>>();
+    vi.mocked(fetch).mockReturnValueOnce(request.promise as Promise<Response>);
+    audio.start();
+    context().change('interrupted');
+    context().change('suspended');
+    expect(context().resume).toHaveBeenCalledTimes(1);
+
+    request.resolve(response());
+    await settle();
+
+    expect(context().resume).toHaveBeenCalledTimes(2);
+    expect(audio.getSnapshot()).toBe('playing');
+  });
   it('respects audio-session interruptions even when context remains running', async () => {
     await start();
     session.change('interrupted');
