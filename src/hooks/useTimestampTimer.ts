@@ -96,6 +96,7 @@ export const useTimestampTimer = (startTime: number) => {
    * 一時停止 ⇄ 再開 をトグルする。
    * 別タブで状態が更新されている可能性があるため、操作直前に localStorage の
    * 最新値を基準に次の状態を算出し、古い state による上書き (競合) を防ぐ。
+   * 同じ操作で音声を切り替えられるよう、切り替え後の一時停止状態を返す。
    */
   const togglePause = useCallback(() => {
     const current = Date.now();
@@ -117,6 +118,7 @@ export const useTimestampTimer = (startTime: number) => {
     setPauseState(next);
     // 再開直後に古い now で表示が巻き戻らないよう即座に同期
     setNow(current);
+    return next.pausedAt !== null;
   }, [pauseState, startTime]);
 
   // 別タブでの一時停止・再開を即時反映する

@@ -146,9 +146,20 @@ export class AmbientAudio {
     }
   };
   pause = () => {
+    if (!this.wanted) return;
     this.wanted = false;
     this.fade(0, 0.15);
     this.publish('paused');
+  };
+  resumeIfPaused = () => {
+    if (this.status !== 'paused') return;
+    this.wanted = true;
+    if (this.loading) {
+      this.publish('loading');
+      return;
+    }
+    this.onStateChange();
+    void this.recover();
   };
   stop = () => {
     this.wanted = false;

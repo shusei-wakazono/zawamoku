@@ -140,6 +140,38 @@ describe('environmental audio lifecycle', () => {
     audio.start(); await settle();
     expect(audio.getSnapshot()).toBe('playing');
   });
+  it('does not start audio when a silent tab follows timer pause and resume', () => {
+    audio.pause();
+    audio.resumeIfPaused();
+
+    expect(audio.getSnapshot()).toBe('idle');
+    expect(Context.instances).toHaveLength(0);
+  });
+  it('restores paused audio using the existing audio graph', async () => {
+    await start();
+    audio.pause();
+    audio.pause();
+    expect(audio.getSnapshot()).toBe('paused');
+
+    audio.resumeIfPaused();
+
+    expect(audio.getSnapshot()).toBe('playing');
+    expect(context().resume).toHaveBeenCalledTimes(1);
+    expect(master().linearRampToValueAtTime).toHaveBeenLastCalledWith(0.65, 11);
+    expect(Context.instances).toHaveLength(1);
+  });
+  it('allows manual retry if automatic resume from timer pause is rejected', async () => {
+    await start();
+    audio.pause();
+    context().change('suspended');
+    context().resume.mockRejectedValueOnce(new Error('NotAllowedError'));
+
+    audio.resumeIfPaused();
+    await settle();
+    expect(audio.getSnapshot()).toBe('blocked');
+
+    await start();
+  });
   it('offers manual retry after automatic resume is rejected', async () => {
     await start();
     context().change('suspended');

@@ -30,7 +30,8 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({
   const { hours, minutes, seconds } = formatDuration(elapsedMs);
   const audioStatus = useSyncExternalStore(audio.subscribe, audio.getSnapshot);
   React.useEffect(() => {
-    if (isPaused && audio.getSnapshot() !== "paused") audio.pause();
+    if (isPaused) audio.pause();
+    else audio.resumeIfPaused();
   }, [audio, isPaused]);
 
   const audioMessages = {
@@ -101,14 +102,13 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({
           isStealth={isStealth}
           isPaused={isPaused}
           onTogglePause={() => {
-            if (isPaused) audio.start();
-            else audio.pause();
-            togglePause();
+            if (togglePause()) audio.pause();
+            else audio.start();
           }}
           onToggleVisibility={toggleStealth}
         />
         <div style={{ marginTop: "16px", textAlign: "center", color: "#475569", fontSize: "12px" }}>
-          <p role="status">{audioMessages[audioStatus]}</p>
+          <p role="status">{audioMessages[isPaused && audioStatus === "idle" ? "paused" : audioStatus]}</p>
           {!isPaused && audioStatus !== "playing" && audioStatus !== "loading" && (
             <button type="button" onClick={audio.start} style={{ cursor: "pointer", padding: "8px 16px", borderRadius: "16px", border: "1px solid #cbd5e1", background: "#fff", color: "#334155" }}>
               {audioStatus === "error" ? "環境音を再試行" : "環境音を再生・再開"}
