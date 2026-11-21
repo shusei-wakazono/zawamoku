@@ -62,6 +62,16 @@ export class AmbientAudio {
   private onVisible = () => {
     if (document.visibilityState === 'visible') void this.recover();
   };
+  private onResumeRejected() {
+    if (!this.wanted) return;
+    if (this.interrupted()) {
+      this.publish('interrupted');
+    } else if (this.status === 'interrupted' || this.context?.state === 'running') {
+      this.onStateChange();
+    } else {
+      this.publish('blocked');
+    }
+  }
   private recover = async () => {
     if (!this.context || !this.wanted || this.loading || this.pendingResume || this.interrupted()) return;
     if (this.context.state === 'running') return;
@@ -69,14 +79,17 @@ export class AmbientAudio {
     const generation = this.generation;
     this.pendingResume = true;
     this.publish('blocked');
+    let resumed = true;
     try {
       await context.resume();
-      if (generation === this.generation && this.wanted) this.onStateChange();
     } catch {
-      if (generation === this.generation && this.wanted) this.publish('blocked');
-    } finally {
-      if (generation === this.generation) this.pendingResume = false;
+      resumed = false;
     }
+    if (generation !== this.generation) return;
+    // A second interruption may have ended while resume was pending.
+    this.pendingResume = false;
+    if (resumed) this.onStateChange();
+    else this.onResumeRejected();
   };
 
   /** Call directly from a click so resume retains browser user activation. */
@@ -87,7 +100,7 @@ export class AmbientAudio {
       this.publish(this.loading ? 'loading' : 'blocked');
       void context.resume().then(() => {
         if (this.context === context && !this.loading) this.onStateChange();
-      }).catch(() => { if (this.context === context && this.wanted) this.publish('blocked'); });
+      }).catch(() => { if (this.context === context) this.onResumeRejected(); });
       return;
     }
     const generation = ++this.generation;
@@ -108,7 +121,7 @@ export class AmbientAudio {
       this.publish('loading');
       // Resume before fetching: the start button supplies user activation.
       void context.resume().catch(() => {
-        if (generation === this.generation && this.wanted) this.publish('blocked');
+        if (generation === this.generation) this.onResumeRejected();
       });
       void Promise.all(SOUND_PATHS.map(async path => {
         const response = await fetch(path);

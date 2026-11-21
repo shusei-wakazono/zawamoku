@@ -104,6 +104,67 @@ describe('environmental audio lifecycle', () => {
     expect(context().resume).toHaveBeenCalledTimes(2);
     expect(audio.getSnapshot()).toBe('playing');
   });
+  it.each(['resolves', 'rejects'])('retries after a second interruption if the pending resume %s', async (outcome) => {
+    await start();
+    const pending = deferred<void>();
+    context().resume.mockReturnValueOnce(pending.promise);
+    context().change('interrupted');
+    context().change('suspended');
+
+    if (outcome === 'resolves') {
+      context().change('running');
+      pending.resolve();
+    }
+    context().change('interrupted');
+    context().change('suspended');
+    expect(context().resume).toHaveBeenCalledTimes(2);
+    if (outcome === 'rejects') pending.reject(new Error('resume interrupted again'));
+    await settle();
+
+    expect(context().resume).toHaveBeenCalledTimes(3);
+    expect(audio.getSnapshot()).toBe('playing');
+  });
+  it.each(['automatic', 'manual'])('preserves an active interruption when %s resume rejects', async (mode) => {
+    await start();
+    const pending = deferred<void>();
+    context().resume.mockReturnValueOnce(pending.promise);
+    context().change('suspended');
+    if (mode === 'automatic') win.dispatchEvent(new Event('focus'));
+    else audio.start();
+
+    context().change('interrupted');
+    pending.reject(new Error('resume interrupted'));
+    await settle();
+    expect(audio.getSnapshot()).toBe('interrupted');
+    expect(context().resume).toHaveBeenCalledTimes(2);
+
+    context().change('suspended');
+    await settle();
+    expect(context().resume).toHaveBeenCalledTimes(3);
+    expect(audio.getSnapshot()).toBe('playing');
+  });
+  it('preserves an active interruption when the initial resume rejects', async () => {
+    const pending = deferred<void>();
+    vi.stubGlobal('AudioContext', class extends Context {
+      constructor() {
+        super();
+        this.resume.mockReturnValueOnce(pending.promise);
+      }
+    });
+    audio.start();
+    context().change('interrupted');
+    await settle();
+
+    pending.reject(new Error('initial resume interrupted'));
+    await settle();
+    expect(audio.getSnapshot()).toBe('interrupted');
+    expect(context().resume).toHaveBeenCalledTimes(1);
+
+    context().change('suspended');
+    await settle();
+    expect(context().resume).toHaveBeenCalledTimes(2);
+    expect(audio.getSnapshot()).toBe('playing');
+  });
   it('recovers after loading if an interruption ended while sounds were loading', async () => {
     const request = deferred<ReturnType<typeof response>>();
     vi.mocked(fetch).mockReturnValueOnce(request.promise as Promise<Response>);
