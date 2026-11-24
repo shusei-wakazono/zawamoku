@@ -1,6 +1,6 @@
 import React from "react";
-import { PrimaryButton } from "./ui/PrimaryButton";
-import { SecondaryButton } from "./ui/SecondaryButton";
+import { PrimaryButton } from "./UI/PrimaryButton";
+import { SecondaryButton } from "./UI/SecondaryButton";
 
 type EndConfirmModalProps = {
   isOpen: boolean;

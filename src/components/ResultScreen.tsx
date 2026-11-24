@@ -1,7 +1,7 @@
 import React from "react";
-import { GlassCard } from "./ui/GlassCard";
-import { PrimaryButton } from "./ui/PrimaryButton";
-import { ScreenTitle } from "./ui/ScreenTitle";
+import { GlassCard } from "./UI/GlassCard";
+import { PrimaryButton } from "./UI/PrimaryButton";
+import { ScreenTitle } from "./UI/ScreenTitle";
 import { TimerDisplay } from "./TimerDisplay"; // 追加: 共通タイマーを呼び出す
 
 type ResultScreenProps = {
