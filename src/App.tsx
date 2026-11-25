@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { AmbientAudio } from "./audio/AmbientAudio";
-import { GradientContainer } from "./components/ui/GradientContainer";
+import { useState } from "react";
+import { useSpatialAudio } from "./hooks/useSpatialAudio";
+import { GradientContainer } from "./components/UI/GradientContainer";
 import { StartScreen } from "./components/StartScreen";
 import { WorkingScreen } from "./components/WorkingScreen";
 import { ResultScreen } from "./components/ResultScreen";
@@ -10,8 +10,7 @@ import { formatDuration } from "./utils/formatDuration";
 const STORAGE_KEY_START_TIME = "zawamoku_start_time";
 
 export default function App() {
-  const [audio] = useState(() => new AmbientAudio());
-  useEffect(() => () => audio.stop(), [audio]);
+  const { audio, status } = useSpatialAudio();
   // 【追加ポイント2】初回起動・リロード時に前回の作業データを復元する
   const [startTime, setStartTime] = useState<number>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_START_TIME);
@@ -43,7 +42,8 @@ export default function App() {
 
   // 【追加ポイント3】画面遷移ごとのストレージ管理
   const handleStart = () => {
-    audio.start();
+    audio.setMuted(false);
+    void audio.start();
     const now = Date.now();
     localStorage.setItem(STORAGE_KEY_START_TIME, String(now));
     setStartTime(now);
@@ -68,7 +68,7 @@ export default function App() {
       {appState === "start" && <StartScreen onStart={handleStart} />}
 
       {appState === "working" && (
-        <WorkingScreen startTime={startTime} onEnd={handleEnd} audio={audio} />
+        <WorkingScreen startTime={startTime} onEnd={handleEnd} audio={audio} audioStatus={status} />
       )}
 
       {appState === "result" && (

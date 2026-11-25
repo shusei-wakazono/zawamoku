@@ -93,7 +93,7 @@ export const useTimestampTimer = (startTime: number) => {
   const elapsedMs = calcElapsedMs(now);
 
   /**
-   * 一時停止 ⇄ 再開 をトグルする。
+   * 一時停止 ⇄ 再開をトグルする。
    * 別タブで状態が更新されている可能性があるため、操作直前に localStorage の
    * 最新値を基準に次の状態を算出し、古い state による上書き (競合) を防ぐ。
    * 同じ操作で音声を切り替えられるよう、切り替え後の一時停止状態を返す。
@@ -102,15 +102,16 @@ export const useTimestampTimer = (startTime: number) => {
     const current = Date.now();
     // 保存データが無い (保存失敗・別タブで終了直後など) 場合は手元の state を使う
     const latest = readPauseState(startTime) ?? pauseState;
+    const { pausedAt } = latest;
     const next: PauseState =
-      latest.pausedAt === null
+      pausedAt === null
         ? // 計測中 → 一時停止: 停止時刻を記録
           { ...latest, pausedAt: current }
         : // 一時停止中 → 再開: 停止していた時間を累積へ加算
           {
             pausedAt: null,
             pausedTotalMs:
-              latest.pausedTotalMs + Math.max(0, current - latest.pausedAt),
+              latest.pausedTotalMs + Math.max(0, current - pausedAt),
           };
     // 永続化は操作時のみ同期的に行う (state 経由の effect 書き込みだと、
     // 他タブから同期した値や古い値を書き戻してしまう恐れがあるため)

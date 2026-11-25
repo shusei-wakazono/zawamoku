@@ -1,6 +1,6 @@
 import React from "react";
-import { PrimaryButton } from "./ui/PrimaryButton";
-import { ScreenTitle } from "./ui/ScreenTitle"; // 追加
+import { PrimaryButton } from "./UI/PrimaryButton";
+import { ScreenTitle } from "./UI/ScreenTitle"; // 追加
 
 type StartScreenProps = {
   onStart: () => void;
