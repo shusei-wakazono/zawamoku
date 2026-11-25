@@ -45,27 +45,20 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({
   }, [audio, isPaused]);
 
   useEffect(() => {
-    if (audioStatus === "interrupted") togglePause(true);
-  }, [audioStatus, togglePause]);
-
-  useEffect(() => {
-    const pauseForBackground = () => {
-      togglePause(true);
-      audio.pause();
-    };
+    const pauseAudioForBackground = () => audio.pause();
     const handleVisibility = () => {
-      if (document.hidden) pauseForBackground();
+      if (document.hidden) pauseAudioForBackground();
     };
     document.addEventListener("visibilitychange", handleVisibility);
-    document.addEventListener("freeze", pauseForBackground);
-    window.addEventListener("pagehide", pauseForBackground);
+    document.addEventListener("freeze", pauseAudioForBackground);
+    window.addEventListener("pagehide", pauseAudioForBackground);
     handleVisibility();
     return () => {
       document.removeEventListener("visibilitychange", handleVisibility);
-      document.removeEventListener("freeze", pauseForBackground);
-      window.removeEventListener("pagehide", pauseForBackground);
+      document.removeEventListener("freeze", pauseAudioForBackground);
+      window.removeEventListener("pagehide", pauseAudioForBackground);
     };
-  }, [audio, togglePause]);
+  }, [audio]);
 
   const audioMessages = {
     idle: "環境音を再生できます",
